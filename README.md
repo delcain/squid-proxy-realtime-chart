@@ -31,12 +31,12 @@ O sistema lê o arquivo `access.log`, resolve os IPs dos clientes via DNS (com c
 
 ## 🏗️ Estrutura do projeto
 
-squid-monitor/
-├── app.py # Código principal do Streamlit
-├── squid_monitor.db # Banco SQLite (criado automaticamente)
-├── requirements.txt # Dependências do projeto
-└── README.md # Este arquivo
-
+squid-proxy-realtime-chart/
+```bash
+├── app.py               # Código principal do Streamlit
+├── squid_monitor.db     # Banco SQLite (criado automaticamente)
+├── requirements.txt     # Dependências do projeto
+└── README.md            # Este arquivo
 ---
 
 ## ⚙️ Instalação
