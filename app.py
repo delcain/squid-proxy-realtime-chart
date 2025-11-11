@@ -1,27 +1,35 @@
 import streamlit as st
-import threading, time, re, os, sqlite3, socket
-from collections import deque, Counter
-from datetime import datetime, timedelta
-from dateutil import tz
-from streamlit_autorefresh import st_autorefresh
+import threading
+import time
+import re
+import os
+import sqlite3
+import socket
 import pandas as pd
 import plotly.express as px
+from datetime import datetime, timedelta
+from dateutil import tz
+from collections import deque, Counter
+from streamlit_autorefresh import st_autorefresh
 from functools import lru_cache
 
-# ==========================
+# =====================================================
 # CONFIGURAÇÕES INICIAIS
-# ==========================
+# =====================================================
 LOG_PATH = "/var/log/squid/access.log"
-DB_PATH = "squid_monitor.db"  # banco unificado (dns + logs)
+DB_PATH = "squid_monitor.db"
 
-# ==========================
+# Buffer global thread-safe
+BUFFER = deque(maxlen=10000)
+
+# =====================================================
 # BANCO DE DADOS
-# ==========================
+# =====================================================
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
 
-    # tabela de cache DNS
+    # Tabela de cache DNS
     c.execute("""
         CREATE TABLE IF NOT EXISTS dns_cache (
             ip TEXT PRIMARY KEY,
@@ -30,7 +38,7 @@ def init_db():
         )
     """)
 
-    # tabela de acessos
+    # Tabela de logs de acesso
     c.execute("""
         CREATE TABLE IF NOT EXISTS access_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -49,9 +57,9 @@ def init_db():
 
 init_db()
 
-# ==========================
+# =====================================================
 # CACHE DNS PERSISTENTE
-# ==========================
+# =====================================================
 def get_cached_hostname(ip):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -86,9 +94,9 @@ def resolve_dns(ip):
     set_cached_hostname(ip, hostname)
     return hostname
 
-# ==========================
+# =====================================================
 # PARSE DO LOG
-# ==========================
+# =====================================================
 LINE_RE = re.compile(
     r'^(?P<ts>\d+\.\d+)\s+(?P<elapsed>\S+)\s+(?P<client>\S+)\s+(?P<result>\S+)\s+'
     r'(?P<size>\S+)\s+(?P<method>\S+)\s+(?P<url>\S+)'
@@ -118,9 +126,9 @@ def parse_line(line):
         "size": size
     }
 
-# ==========================
+# =====================================================
 # SALVAR ACESSOS NO BANCO
-# ==========================
+# =====================================================
 def save_access_to_db(entry):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -139,9 +147,9 @@ def save_access_to_db(entry):
     conn.commit()
     conn.close()
 
-# ==========================
-# MONITORAR O LOG EM THREAD
-# ==========================
+# =====================================================
+# MONITORAMENTO DO LOG
+# =====================================================
 def tail_file(path, stop_event):
     try:
         with open(path, "r", encoding="utf-8", errors="ignore") as f:
@@ -154,26 +162,25 @@ def tail_file(path, stop_event):
                 parsed = parse_line(line)
                 if parsed:
                     save_access_to_db(parsed)
-                    st.session_state.buffer.appendleft(parsed)
+                    BUFFER.appendleft(parsed)
     except Exception as e:
-        st.session_state.buffer.appendleft({"error": str(e)})
+        BUFFER.appendleft({"error": str(e)})
 
-# ==========================
+# =====================================================
 # INTERFACE STREAMLIT
-# ==========================
+# =====================================================
 st.set_page_config(page_title="Squid Proxy Monitor", layout="wide")
-st.title("🦑 Monitor de Acessos Squid (com persistência em banco)")
+st.title("🦑 Squid Proxy Monitor (com SQLite e DNS Cache)")
 
 st.sidebar.header("Configurações")
 log_path = st.sidebar.text_input("Caminho do access.log", LOG_PATH)
 refresh_rate = st.sidebar.slider("Atualização (s)", 1, 10, 3)
 max_lines = st.sidebar.slider("Linhas exibidas", 100, 5000, 1000, 100)
 
-# Inicializa o monitor
-if "buffer" not in st.session_state:
-    st.session_state.buffer = deque(maxlen=10000)
+# Inicializa thread do monitor
 if "stop_event" not in st.session_state:
     st.session_state.stop_event = threading.Event()
+
 if "thread" not in st.session_state or not st.session_state.thread.is_alive():
     st.session_state.stop_event.clear()
     t = threading.Thread(target=tail_file, args=(log_path, st.session_state.stop_event), daemon=True)
@@ -192,7 +199,9 @@ if not df.empty:
     st.subheader("📋 Últimos acessos")
     st.dataframe(df, width="stretch")
 
-    # Top 50 sites
+    # =====================================================
+    # TOP 50 SITES MAIS ACESSADOS (GRÁFICO DE PIZZA)
+    # =====================================================
     st.subheader("🍕 Top 50 Sites mais acessados")
     df["dominio"] = df["url"].apply(lambda x: re.sub(r"^https?://(www\.)?", "", x).split("/")[0])
     top_sites = Counter(df["dominio"]).most_common(50)
@@ -200,13 +209,15 @@ if not df.empty:
     fig = px.pie(top_df, names="Domínio", values="Acessos", title="Top 50 Domínios", hole=0.3)
     st.plotly_chart(fig, use_container_width=True)
 
-    # Tráfego por cliente
-    st.subheader("📈 Tráfego por cliente")
+    # =====================================================
+    # TRÁFEGO POR CLIENTE (GRÁFICO DE BARRAS)
+    # =====================================================
+    st.subheader("📈 Tráfego total por cliente")
     df_group = df.groupby("client_host")["size"].sum().reset_index()
     fig2 = px.bar(df_group, x="client_host", y="size", title="Tráfego total (bytes) por cliente")
     st.plotly_chart(fig2, use_container_width=True)
 else:
-    st.info("Aguardando dados...")
+    st.info("Aguardando dados do log do Squid...")
 
 # Botão parar
 if st.button("🛑 Parar monitor"):
