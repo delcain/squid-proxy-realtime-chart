@@ -1,6 +1,6 @@
-# 🦑 Squid Proxy Monitor
+# 🦑 Squid Proxy Realtime Chart
 
-**Squid Proxy Monitor** é uma aplicação em **Python + Streamlit** que realiza o **monitoramento em tempo real dos acessos do Squid Proxy**.  
+**Squid Proxy Realtime Chart** é uma aplicação em **Python + Streamlit** que realiza o **monitoramento em tempo real dos acessos do Squid Proxy**.  
 O sistema lê o arquivo `access.log`, resolve os IPs dos clientes via DNS (com cache persistente), armazena as informações em banco SQLite e apresenta relatórios interativos com gráficos e estatísticas.
 
 ---
