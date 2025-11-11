@@ -37,6 +37,7 @@ squid-proxy-realtime-chart/
 ├── squid_monitor.db     # Banco SQLite (criado automaticamente)
 ├── requirements.txt     # Dependências do projeto
 └── README.md            # Este arquivo
+```
 ---
 
 ## ⚙️ Instalação
