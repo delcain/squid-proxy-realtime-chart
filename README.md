@@ -7,10 +7,10 @@ O sistema lê o arquivo `access.log`, resolve os IPs dos clientes via DNS (com c
 
 ## 📸 Capturas de tela
 
-### Tela principal
+### Gráfico de Pizza
 ![Gráfico de pizza](print01.png)
 
-### Gráfico de Top 50 sites
+### Grid Principal
 ![Tela Principal](print02.png)
 
 
