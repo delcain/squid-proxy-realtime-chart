@@ -5,6 +5,17 @@ O sistema lê o arquivo `access.log`, resolve os IPs dos clientes via DNS (com c
 
 ---
 
+## 📸 Capturas de tela
+
+### Tela principal
+![Tela principal](print01.png)
+
+### Gráfico de Top 50 sites
+![Gráfico de pizza](print02.png)
+
+
+---
+
 ## 🚀 Funcionalidades
 
 - 📡 **Monitoramento em tempo real** do arquivo de log do Squid (`/var/log/squid/access.log`);
